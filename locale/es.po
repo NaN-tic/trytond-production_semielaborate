@@ -1,0 +1,35 @@
+#
+msgid ""
+msgstr "Content-Type: text/plain; charset=utf-8\n"
+
+msgctxt "field:product.template,is_semielaborate:"
+msgid "Semielaborate"
+msgstr "Semielaborado"
+
+msgctxt "field:product.template,semielaborate_products:"
+msgid "Semielaborates"
+msgstr "Semielaborados"
+
+msgctxt "field:product.template,final_products:"
+msgid "Final Products"
+msgstr "Productos finales"
+
+msgctxt "help:product.template,semielaborate_products:"
+msgid "Semielaborate products found in the BOM definition."
+msgstr "Productos semielaborados encontrados en la definición de la LdM."
+
+msgctxt "help:product.template,final_products:"
+msgid "Final products that use this semielaborate in their BOM."
+msgstr "Productos finales que usan este semielaborado en su LdM."
+
+msgctxt "field:product.product,is_semielaborate:"
+msgid "Semielaborate"
+msgstr "Semielaborado"
+
+msgctxt "field:product.product,semielaborate_products:"
+msgid "Semielaborates"
+msgstr "Semielaborados"
+
+msgctxt "field:product.product,final_products:"
+msgid "Final Products"
+msgstr "Productos finales"

@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<data>
+    <xpath expr="//page[@id='production']/field[@name='boms']"
+        position="before">
+        <label name="is_semielaborate"/>
+        <field name="is_semielaborate"/>
+        <field name="semielaborate_products" colspan="4"/>
+        <field name="final_products" colspan="4"/>
+    </xpath>
+</data>
