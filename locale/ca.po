@@ -33,3 +33,7 @@ msgstr "Semielaborats"
 msgctxt "field:product.product,final_products:"
 msgid "Final Products"
 msgstr "Productes finals"
+
+msgctxt "field:production,semielaborate_multiple:"
+msgid "Semielaborate Multiple"
+msgstr "Múltiple de semielaborat"
