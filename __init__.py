@@ -3,11 +3,12 @@
 
 from trytond.pool import Pool
 
-from . import product
+from . import product, production
 
 
 def register():
     Pool.register(
         product.Template,
         product.Product,
+        production.Production,
         module='production_semielaborate', type_='model')
