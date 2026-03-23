@@ -113,5 +113,56 @@ class ProductionSemielaborateTestCase(ModuleTestCase):
             semielaborate_template.get_final_products('final_products'),
             [final_product.id])
 
+    @with_transaction()
+    def test_production_semielaborate_multiple(self):
+        'Production calculates the semielaborate multiple from BOM factor'
+        pool = Pool()
+        Uom = pool.get('product.uom')
+        Template = pool.get('product.template')
+        Product = pool.get('product.product')
+        Bom = pool.get('production.bom')
+        BomInput = pool.get('production.bom.input')
+        BomOutput = pool.get('production.bom.output')
+        Production = pool.get('production')
+
+        unit, = Uom.search([('name', '=', 'Unit')], limit=1)
+        kilogram, = Uom.search([('name', '=', 'Kilogram')], limit=1)
+
+        final_template = Template(
+            name='Finished',
+            type='goods',
+            default_uom=unit,
+            producible=True)
+        final_product = Product(template=final_template)
+
+        semielaborate_template = Template(
+            name='Semi',
+            type='goods',
+            default_uom=kilogram,
+            producible=True,
+            is_semielaborate=True)
+        semielaborate_product = Product(template=semielaborate_template)
+
+        bom = Bom(
+            name='BOM Finished',
+            inputs=[
+                BomInput(
+                    product=semielaborate_product, quantity=20, unit=kilogram),
+            ],
+            outputs=[BomOutput(product=final_product, quantity=100, unit=unit)])
+
+        production = Production()
+        production.product = final_product
+        production.bom = bom
+        production.unit = unit
+
+        production.quantity = 100
+        self.assertEqual(
+            production.on_change_with_semielaborate_multiple(), 1)
+
+        production.quantity = 200
+        self.assertEqual(
+            production.on_change_with_semielaborate_multiple(), 2)
+
 
 del ModuleTestCase
