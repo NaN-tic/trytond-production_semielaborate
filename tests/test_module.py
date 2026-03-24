@@ -45,6 +45,7 @@ class ProductionSemielaborateTestCase(ModuleTestCase):
 
         bom = Bom(
             name='BOM Finished',
+            phantom=False,
             inputs=[
                 BomInput(product=semielaborate_product, quantity=1, unit=unit),
                 BomInput(product=raw_product, quantity=1, unit=unit),
@@ -145,6 +146,7 @@ class ProductionSemielaborateTestCase(ModuleTestCase):
 
         bom = Bom(
             name='BOM Finished',
+            phantom=False,
             inputs=[
                 BomInput(
                     product=semielaborate_product, quantity=20, unit=kilogram),
