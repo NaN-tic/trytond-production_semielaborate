@@ -34,6 +34,18 @@ msgctxt "field:product.product,final_products:"
 msgid "Final Products"
 msgstr "Productos finales"
 
+msgctxt "field:product.product,bom_outputs:"
+msgid "BOM Outputs"
+msgstr "Salidas de LdM"
+
 msgctxt "field:production,semielaborate_multiple:"
 msgid "Semielaborate Multiple"
 msgstr "Múltiplo de semielaborado"
+
+msgctxt "model:ir.action,name:act_product_final_products_related"
+msgid "Final Products"
+msgstr "Productos finales"
+
+msgctxt "model:ir.action,name:act_template_final_products_related"
+msgid "Final Products"
+msgstr "Productos finales"

@@ -62,6 +62,8 @@ class Template(metaclass=PoolMeta):
 class Product(metaclass=PoolMeta):
     __name__ = 'product.product'
 
+    bom_outputs = fields.One2Many(
+        'production.bom.output', 'product', 'BOM Outputs')
     is_semielaborate = fields.Function(
         fields.Boolean('Semielaborate'), 'get_is_semielaborate',
         setter='set_is_semielaborate')
