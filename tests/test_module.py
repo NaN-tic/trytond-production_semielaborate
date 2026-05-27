@@ -65,7 +65,6 @@ class ProductionSemielaborateTestCase(ModuleTestCase):
         Uom = pool.get('product.uom')
         Template = pool.get('product.template')
         Product = pool.get('product.product')
-        ProductBom = pool.get('product.product-production.bom')
         Bom = pool.get('production.bom')
 
         unit, = Uom.search([('name', '=', 'Unit')], limit=1)
@@ -91,7 +90,7 @@ class ProductionSemielaborateTestCase(ModuleTestCase):
                     'template': final_template.id,
                     }])
 
-        bom, = Bom.create([{
+        Bom.create([{
                     'name': 'BOM Finished',
                     'inputs': [('create', [{
                                     'product': semielaborate_product.id,
@@ -104,15 +103,22 @@ class ProductionSemielaborateTestCase(ModuleTestCase):
                                     'unit': unit.id,
                                     }])],
                     }])
-        ProductBom.create([{
-                    'product': final_product.id,
-                    'sequence': 1,
-                    'bom': bom.id,
-                    }])
 
         self.assertEqual(
             semielaborate_template.get_final_products('final_products'),
             [final_product.id])
+        self.assertEqual(
+            Product.search([
+                    ('bom_outputs.bom.inputs.product.template', 'in',
+                        [semielaborate_template.id]),
+                    ]),
+            [final_product])
+        self.assertEqual(
+            Product.search([
+                    ('bom_outputs.bom.inputs.product', 'in',
+                        [semielaborate_product.id]),
+                    ]),
+            [final_product])
 
     @with_transaction()
     def test_production_semielaborate_multiple(self):
