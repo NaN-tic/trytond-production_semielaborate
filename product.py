@@ -6,6 +6,16 @@ from trytond.pool import Pool, PoolMeta
 from trytond.pyson import Eval
 
 
+def search_semielaborate_products_domain(prefix, name, clause):
+    target = prefix
+    if name.startswith('semielaborate_products.'):
+        target += name[len('semielaborate_products'):]
+    return [
+        (prefix + '.template.is_semielaborate', '=', True),
+        (target,) + tuple(clause[1:]),
+        ]
+
+
 class Template(metaclass=PoolMeta):
     __name__ = 'product.template'
 
@@ -18,7 +28,8 @@ class Template(metaclass=PoolMeta):
                 'invisible': Eval('is_semielaborate', False),
                 },
             depends=['is_semielaborate']),
-        'get_semielaborate_products')
+        'get_semielaborate_products',
+        searcher='search_semielaborate_products')
     final_products = fields.Function(
         fields.Many2Many(
             'product.product', None, None, 'Final Products',
@@ -41,6 +52,11 @@ class Template(metaclass=PoolMeta):
                             and getattr(template, 'is_semielaborate', False)):
                         product_ids.add(input_.product.id)
         return list(sorted(product_ids))
+
+    @classmethod
+    def search_semielaborate_products(cls, name, clause):
+        return search_semielaborate_products_domain(
+            'products.bom_outputs.bom.inputs.product', name, clause)
 
     def get_final_products(self, name):
         pool = Pool()
@@ -66,7 +82,7 @@ class Product(metaclass=PoolMeta):
         'production.bom.output', 'product', 'BOM Outputs')
     is_semielaborate = fields.Function(
         fields.Boolean('Semielaborate'), 'get_is_semielaborate',
-        setter='set_is_semielaborate')
+        setter='set_is_semielaborate', searcher='search_is_semielaborate')
     semielaborate_products = fields.Function(
         fields.Many2Many(
             'product.product', None, None, 'Semielaborates',
@@ -74,7 +90,8 @@ class Product(metaclass=PoolMeta):
                 'invisible': Eval('is_semielaborate', False),
                 },
             depends=['is_semielaborate']),
-        'get_semielaborate_products')
+        'get_semielaborate_products',
+        searcher='search_semielaborate_products')
     final_products = fields.Function(
         fields.Many2Many(
             'product.product', None, None, 'Final Products',
@@ -86,6 +103,15 @@ class Product(metaclass=PoolMeta):
 
     def get_is_semielaborate(self, name):
         return bool(self.template and self.template.is_semielaborate)
+
+    @classmethod
+    def search_is_semielaborate(cls, name, clause):
+        return [('template.is_semielaborate',) + tuple(clause[1:])]
+
+    @classmethod
+    def search_semielaborate_products(cls, name, clause):
+        return search_semielaborate_products_domain(
+            'bom_outputs.bom.inputs.product', name, clause)
 
     @classmethod
     def set_is_semielaborate(cls, products, name, value):
