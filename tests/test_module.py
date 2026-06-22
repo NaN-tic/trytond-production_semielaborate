@@ -122,7 +122,7 @@ class ProductionSemielaborateTestCase(ModuleTestCase):
 
     @with_transaction()
     def test_production_semielaborate_multiple(self):
-        'Production calculates the semielaborate multiple from BOM factor'
+        'Production syncs semielaborate multiple with quantity'
         pool = Pool()
         Uom = pool.get('product.uom')
         Template = pool.get('product.template')
@@ -171,6 +171,15 @@ class ProductionSemielaborateTestCase(ModuleTestCase):
         production.quantity = 200
         self.assertEqual(
             production.on_change_with_semielaborate_multiple(), 2)
+
+        production.semielaborate_multiple = 3
+        production.on_change_semielaborate_multiple()
+        self.assertEqual(production.quantity, 300)
+        self.assertEqual(production.semielaborate_multiple, 3)
+        self.assertEqual(len(production.inputs), 1)
+        self.assertEqual(len(production.outputs), 1)
+        self.assertEqual(production.inputs[0].quantity, 60)
+        self.assertEqual(production.outputs[0].quantity, 300)
 
 
 del ModuleTestCase
