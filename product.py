@@ -3,7 +3,7 @@
 
 from trytond.model import fields
 from trytond.pool import Pool, PoolMeta
-from trytond.pyson import Eval
+from trytond.pyson import Bool, Eval, Get, If
 
 
 def search_semielaborate_products_domain(prefix, name, clause):
@@ -131,3 +131,19 @@ class Product(metaclass=PoolMeta):
         if self.template:
             return self.template.get_final_products(name)
         return []
+
+
+class ProductBom(metaclass=PoolMeta):
+    __name__ = 'product.product-production.bom'
+
+    @classmethod
+    def __setup__(cls):
+        super().__setup__()
+        cls.bom.domain = [
+            ['OR',
+                ('phantom', '=', True),
+                ('output_products', '=', If(Bool(Eval('product')),
+                        Eval('product', 0),
+                        Get(Eval('_parent_product', {}), 'id', 0))),
+            ],
+        ]
