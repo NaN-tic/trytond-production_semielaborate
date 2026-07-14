@@ -10,5 +10,6 @@ def register():
     Pool.register(
         product.Template,
         product.Product,
+        product.ProductBom,
         production.Production,
         module='production_semielaborate', type_='model')

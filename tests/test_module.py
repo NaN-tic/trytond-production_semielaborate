@@ -2,12 +2,18 @@
 # repository contains the full copyright notices and license terms.
 
 from trytond.pool import Pool
-from trytond.tests.test_tryton import ModuleTestCase, with_transaction
+from trytond.tests.test_tryton import (
+    ModuleTestCase, activate_module, with_transaction)
 
 
 class ProductionSemielaborateTestCase(ModuleTestCase):
     'Test ProductionSemielaborate module'
     module = 'production_semielaborate'
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        activate_module('production_phantom')
 
     @with_transaction()
     def test_get_semielaborate_products_from_bom_inputs(self):
@@ -28,29 +34,33 @@ class ProductionSemielaborateTestCase(ModuleTestCase):
             type='goods',
             default_uom=unit,
             producible=True)
-        product = Product(template=template)
+        product = Product(template=template, phantom=False)
 
         semielaborate_template = Template(
             name='Semi',
             type='goods',
             default_uom=unit,
             is_semielaborate=True)
-        semielaborate_product = Product(template=semielaborate_template)
+        semielaborate_product = Product(
+            template=semielaborate_template, phantom=False)
 
         raw_template = Template(
             name='Raw',
             type='goods',
             default_uom=unit)
-        raw_product = Product(template=raw_template)
+        raw_product = Product(template=raw_template, phantom=False)
 
         bom = Bom(
             name='BOM Finished',
             phantom=False,
             inputs=[
-                BomInput(product=semielaborate_product, quantity=1, unit=unit),
-                BomInput(product=raw_product, quantity=1, unit=unit),
+                BomInput(product=semielaborate_product, phantom_bom=None,
+                    quantity=1, unit=unit),
+                BomInput(product=raw_product, phantom_bom=None, quantity=1,
+                    unit=unit),
             ],
-            outputs=[BomOutput(product=product, quantity=1, unit=unit)])
+            outputs=[BomOutput(product=product, phantom_bom=None, quantity=1,
+                unit=unit)])
         product.boms = [ProductBom(product=product, sequence=1, bom=bom)]
         template.products = [product]
 
@@ -140,7 +150,7 @@ class ProductionSemielaborateTestCase(ModuleTestCase):
             type='goods',
             default_uom=unit,
             producible=True)
-        final_product = Product(template=final_template)
+        final_product = Product(template=final_template, phantom=False)
 
         semielaborate_template = Template(
             name='Semi',
@@ -148,16 +158,19 @@ class ProductionSemielaborateTestCase(ModuleTestCase):
             default_uom=kilogram,
             producible=True,
             is_semielaborate=True)
-        semielaborate_product = Product(template=semielaborate_template)
+        semielaborate_product = Product(
+            template=semielaborate_template, phantom=False)
 
         bom = Bom(
             name='BOM Finished',
             phantom=False,
             inputs=[
                 BomInput(
-                    product=semielaborate_product, quantity=20, unit=kilogram),
+                    product=semielaborate_product, phantom_bom=None,
+                    quantity=20, unit=kilogram),
             ],
-            outputs=[BomOutput(product=final_product, quantity=100, unit=unit)])
+            outputs=[BomOutput(product=final_product, phantom_bom=None,
+                quantity=100, unit=unit)])
 
         production = Production()
         production.product = final_product
@@ -180,6 +193,118 @@ class ProductionSemielaborateTestCase(ModuleTestCase):
         self.assertEqual(len(production.outputs), 1)
         self.assertEqual(production.inputs[0].quantity, 60)
         self.assertEqual(production.outputs[0].quantity, 300)
+
+    @with_transaction()
+    def test_phantom_bom_can_be_linked_without_output_product(self):
+        'Semielaborate allows linking phantom BOMs without output product'
+        pool = Pool()
+        Uom = pool.get('product.uom')
+        Template = pool.get('product.template')
+        Product = pool.get('product.product')
+        Bom = pool.get('production.bom')
+        BomInput = pool.get('production.bom.input')
+        ProductBom = pool.get('product.product-production.bom')
+
+        unit, = Uom.search([('name', '=', 'Unit')], limit=1)
+
+        raw_template = Template(name='Raw Link', type='goods', default_uom=unit)
+        raw_product = Product(template=raw_template, phantom=False)
+
+        semielaborate_template = Template(
+            name='Semi Link',
+            type='goods',
+            default_uom=unit,
+            producible=True,
+            is_semielaborate=True)
+        semielaborate_product = Product(
+            template=semielaborate_template, phantom=False)
+
+        phantom_bom = Bom(
+            name='Phantom Link BOM',
+            phantom=True,
+            phantom_unit=unit,
+            phantom_quantity=1,
+            inputs=[BomInput(
+                product=raw_product, phantom_bom=None, quantity=2, unit=unit)])
+
+        product_bom = ProductBom(product=semielaborate_product, bom=phantom_bom)
+        ProductBom.save([product_bom])
+
+        self.assertEqual(product_bom.bom, phantom_bom)
+
+    @with_transaction()
+    def test_explode_bom_expands_phantom_inputs(self):
+        'Production explodes phantom products with semielaborate active'
+        pool = Pool()
+        Uom = pool.get('product.uom')
+        Template = pool.get('product.template')
+        Product = pool.get('product.product')
+        Bom = pool.get('production.bom')
+        BomInput = pool.get('production.bom.input')
+        BomOutput = pool.get('production.bom.output')
+        ProductBom = pool.get('product.product-production.bom')
+        Production = pool.get('production')
+
+        if 'phantom' not in Product._fields:
+            self.skipTest('production_phantom field not active in test DB')
+
+        unit, = Uom.search([('name', '=', 'Unit')], limit=1)
+
+        raw_template = Template(
+            name='Raw',
+            type='goods',
+            default_uom=unit)
+        raw_product = Product(template=raw_template)
+
+        phantom_template = Template(
+            name='Phantom Semi',
+            type='goods',
+            default_uom=unit,
+            producible=True,
+            is_semielaborate=True)
+        phantom_product = Product(template=phantom_template, phantom=True)
+
+        final_template = Template(
+            name='Finished',
+            type='goods',
+            default_uom=unit,
+            producible=True)
+        final_product = Product(template=final_template)
+
+        phantom_bom = Bom(
+            name='BOM Phantom',
+            phantom=False,
+            inputs=[BomInput(
+                product=raw_product, phantom_bom=None, quantity=2, unit=unit)],
+            outputs=[BomOutput(
+                product=phantom_product, phantom_bom=None,
+                quantity=1, unit=unit)])
+        phantom_product.boms = [
+            ProductBom(product=phantom_product, sequence=1, bom=phantom_bom)]
+
+        final_bom = Bom(
+            name='BOM Finished',
+            phantom=False,
+            inputs=[BomInput(
+                product=phantom_product, phantom_bom=None,
+                quantity=3, unit=unit)],
+            outputs=[BomOutput(
+                product=final_product, phantom_bom=None,
+                quantity=1, unit=unit)])
+        final_product.boms = [
+            ProductBom(product=final_product, sequence=1, bom=final_bom)]
+
+        production = Production()
+        production.product = final_product
+        production.bom = final_bom
+        production.unit = unit
+        production.quantity = 1
+
+        production.explode_bom()
+
+        self.assertEqual(len(production.inputs), 1)
+        self.assertEqual(production.inputs[0].product, raw_product)
+        self.assertEqual(production.inputs[0].quantity, 6)
 
 
 del ModuleTestCase
