@@ -28,10 +28,28 @@ class Production(metaclass=PoolMeta):
         return (self.quantity or 0.0) / output_quantity
 
     def _has_semielaborate_input(self):
-        return bool(self.bom and any(
-            i.product and i.product.template
-            and i.product.template.is_semielaborate
-            for i in self.bom.inputs))
+        return bool(self.bom and any(self._semielaborate_inputs()))
+
+    def _semielaborate_inputs(self):
+        ProductBom = Pool().get('product.product-production.bom')
+
+        for input_ in self.bom.inputs:
+            if (input_.product and input_.product.template
+                    and input_.product.template.is_semielaborate):
+                yield input_.product
+
+            if not input_.phantom_bom:
+                continue
+
+            linked_boms = ProductBom.search([
+                    ('bom', '=', input_.phantom_bom.id),
+                    ('bom_type', '=', 'phantom'),
+                    ])
+            for linked_bom in linked_boms:
+                product = linked_bom.product
+                if (product and product.template
+                        and product.template.is_semielaborate):
+                    yield product
 
     def _get_semielaborate_output_quantity(self):
         if not (self._has_semielaborate_input()
