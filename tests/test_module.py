@@ -24,45 +24,70 @@ class ProductionSemielaborateTestCase(ModuleTestCase):
         Product = pool.get('product.product')
         ProductBom = pool.get('product.product-production.bom')
         Bom = pool.get('production.bom')
-        BomInput = pool.get('production.bom.input')
-        BomOutput = pool.get('production.bom.output')
 
         unit, = Uom.search([('name', '=', 'Unit')], limit=1)
 
-        template = Template(
-            name='Finished',
-            type='goods',
-            default_uom=unit,
-            producible=True)
-        product = Product(template=template, phantom=False)
+        template = Template.create([{
+                    'name': 'Finished',
+                    'type': 'goods',
+                    'default_uom': unit.id,
+                    'producible': True,
+                    }])[0]
+        product, = Product.create([{
+                    'template': template.id,
+                    'phantom': False,
+                    }])
 
-        semielaborate_template = Template(
-            name='Semi',
-            type='goods',
-            default_uom=unit,
-            is_semielaborate=True)
-        semielaborate_product = Product(
-            template=semielaborate_template, phantom=False)
+        semielaborate_template = Template.create([{
+                    'name': 'Semi',
+                    'type': 'goods',
+                    'default_uom': unit.id,
+                    'producible': True,
+                    }])[0]
+        semielaborate_product, = Product.create([{
+                    'template': semielaborate_template.id,
+                    'phantom': False,
+                    }])
+        Product.write([semielaborate_product], {
+                'is_semielaborate': True,
+                })
 
-        raw_template = Template(
-            name='Raw',
-            type='goods',
-            default_uom=unit)
-        raw_product = Product(template=raw_template, phantom=False)
+        raw_template = Template.create([{
+                    'name': 'Raw',
+                    'type': 'goods',
+                    'default_uom': unit.id,
+                    }])[0]
+        raw_product, = Product.create([{
+                    'template': raw_template.id,
+                    'phantom': False,
+                    }])
 
-        bom = Bom(
-            name='BOM Finished',
-            phantom=False,
-            inputs=[
-                BomInput(product=semielaborate_product, phantom_bom=None,
-                    quantity=1, unit=unit),
-                BomInput(product=raw_product, phantom_bom=None, quantity=1,
-                    unit=unit),
-            ],
-            outputs=[BomOutput(product=product, phantom_bom=None, quantity=1,
-                unit=unit)])
-        product.boms = [ProductBom(product=product, sequence=1, bom=bom)]
-        template.products = [product]
+        bom, = Bom.create([{
+                    'name': 'BOM Finished',
+                    'phantom': False,
+                    'inputs': [('create', [{
+                                    'product': semielaborate_product.id,
+                                    'phantom_bom': None,
+                                    'quantity': 1,
+                                    'unit': unit.id,
+                                    }, {
+                                    'product': raw_product.id,
+                                    'phantom_bom': None,
+                                    'quantity': 1,
+                                    'unit': unit.id,
+                                    }])],
+                    'outputs': [('create', [{
+                                    'product': product.id,
+                                    'phantom_bom': None,
+                                    'quantity': 1,
+                                    'unit': unit.id,
+                                    }])],
+                    }])
+        ProductBom.create([{
+                    'product': product.id,
+                    'sequence': 1,
+                    'bom': bom.id,
+                    }])
 
         self.assertEqual(
             template.get_semielaborate_products('semielaborate_products'),
@@ -227,7 +252,10 @@ class ProductionSemielaborateTestCase(ModuleTestCase):
             inputs=[BomInput(
                 product=raw_product, phantom_bom=None, quantity=2, unit=unit)])
 
-        product_bom = ProductBom(product=semielaborate_product, bom=phantom_bom)
+        product_bom = ProductBom(
+            product=semielaborate_product,
+            bom=phantom_bom,
+            bom_type='phantom')
         ProductBom.save([product_bom])
 
         self.assertEqual(product_bom.bom, phantom_bom)
