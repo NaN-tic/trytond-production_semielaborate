@@ -2,30 +2,51 @@
 # copyright notices and license terms.
 
 from decimal import Decimal
+from math import ceil
+
+from sql.functions import Ceil
 
 from trytond.model import dualmethod, fields
 from trytond.modules.product import round_price
 from trytond.pool import Pool, PoolMeta
 from trytond.pyson import Eval
+from trytond.transaction import Transaction
 
 
 class Production(metaclass=PoolMeta):
     __name__ = 'production'
 
     semielaborate_multiple = fields.Float(
-        'Semielaborate Multiple',
+        'Semielaborate Multiple', digits=(16, 0),
         states={
             'readonly': ~Eval('state').in_(['request', 'draft']),
             'invisible': ~Eval('product'),
             },
         depends=['state', 'product'])
 
+    @classmethod
+    def __register__(cls, module_name):
+        super().__register__(module_name)
+        table = cls.__table__()
+        multiple = table.semielaborate_multiple
+        Transaction().connection.cursor().execute(*table.update(
+            [multiple], [Ceil(multiple)], where=multiple != Ceil(multiple)))
+
     @fields.depends('bom', 'product', 'quantity', 'unit')
     def on_change_with_semielaborate_multiple(self, name=None):
         output_quantity = self._get_semielaborate_output_quantity()
         if not output_quantity:
-            return 0.0
-        return (self.quantity or 0.0) / output_quantity
+            return 0
+        return ceil(Decimal(str(self.quantity or 0))
+            / Decimal(str(output_quantity)))
+
+    @classmethod
+    def preprocess_values(cls, mode, values):
+        values = super().preprocess_values(mode, values)
+        multiple = values.get('semielaborate_multiple')
+        if multiple is not None:
+            values['semielaborate_multiple'] = ceil(multiple)
+        return values
 
     def _has_semielaborate_input(self):
         return bool(self.bom and (
@@ -155,6 +176,7 @@ class Production(metaclass=PoolMeta):
         'semielaborate_multiple', 'bom', 'product', 'quantity', 'unit',
         methods=['explode_bom'])
     def on_change_semielaborate_multiple(self):
+        self.semielaborate_multiple = ceil(self.semielaborate_multiple or 0)
         output_quantity = self._get_semielaborate_output_quantity()
         if not output_quantity:
             return
